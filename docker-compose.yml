@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: nosql_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: vulnerable_app
+    networks:
+      - nosql-network
+    volumes:
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    ports:
+      - "27017:27017"
+
+  app:
+    build: .
+    container_name: nosql_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/vulnerable_app
+      - NODE_ENV=development
+    depends_on:
+      - mongodb
+    networks:
+      - nosql-network
+    volumes:
+      - ./src:/app/src
+
+networks:
+  nosql-network:
+    driver: bridge
