@@ -70,11 +70,11 @@ app.get('/', (req, res) => {
     </head>
     <body>
       <div class="container">
-        <h1>🔓 NoSQL Injection Lab</h1>
+        <h1> NoSQL Injection Lab</h1>
         <p>Application volontairement vulnérable à des fins pédagogiques</p>
         
         <div class="warning">
-          <strong>⚠️ Avertissement</strong><br>
+          <strong> Avertissement</strong><br>
           Cette application contient des vulnérabilités intentionnelles. Ne jamais déployer en production!
         </div>
 
