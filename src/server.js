@@ -27,97 +27,6 @@ MongoClient.connect(MONGODB_URI, { useUnifiedTopology: true })
     process.exit(1);
   });
 
-// Route principale
-app.get('/', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>NoSQL Injection Lab</title>
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          max-width: 800px;
-          margin: 50px auto;
-          padding: 20px;
-          background: #f5f5f5;
-        }
-        .container {
-          background: white;
-          padding: 30px;
-          border-radius: 8px;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 { color: #333; }
-        .endpoint {
-          background: #f9f9f9;
-          padding: 15px;
-          margin: 10px 0;
-          border-left: 4px solid #007bff;
-        }
-        code {
-          background: #e9ecef;
-          padding: 2px 6px;
-          border-radius: 3px;
-        }
-        .warning {
-          background: #fff3cd;
-          border-left: 4px solid #ffc107;
-          padding: 15px;
-          margin: 20px 0;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <h1> NoSQL Injection Lab</h1>
-        <p>Application volontairement vulnérable à des fins pédagogiques</p>
-        
-        <div class="warning">
-          <strong> Avertissement</strong><br>
-          Cette application contient des vulnérabilités intentionnelles. Ne jamais déployer en production!
-        </div>
-
-        <h2>Endpoints disponibles</h2>
-        
-        <div class="endpoint">
-          <strong>POST /login</strong><br>
-          Authentification utilisateur (VULNÉRABLE)<br>
-          Body: <code>{"username": "admin", "password": "Admin123!"}</code>
-        </div>
-
-        <div class="endpoint">
-          <strong>POST /search</strong><br>
-          Recherche d'utilisateurs (VULNÉRABLE)<br>
-          Body: <code>{"username": "alice"}</code>
-        </div>
-
-        <div class="endpoint">
-          <strong>GET /users</strong><br>
-          Liste tous les utilisateurs (sans secrets)
-        </div>
-
-        <h2>Utilisateurs de test</h2>
-        <ul>
-          <li>admin / Admin123!</li>
-          <li>alice / alice2024</li>
-          <li>bob / bobsecure</li>
-          <li>charlie / charlie456</li>
-        </ul>
-
-        <h2>Objectifs</h2>
-        <ol>
-          <li>Contourner l'authentification sans connaître le mot de passe</li>
-          <li>Extraire le secret de l'admin</li>
-          <li>Énumérer tous les utilisateurs</li>
-          <li>Utiliser les opérateurs $ne, $gt, $regex, $where</li>
-        </ol>
-      </div>
-    </body>
-    </html>
-  `);
-});
-
 // ENDPOINT VULNÉRABLE 1: Login avec injection NoSQL
 app.post('/login', async (req, res) => {
   try {
@@ -235,6 +144,93 @@ app.get('/users', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error'
+    });
+  }
+});
+
+// Health check endpoint (DIABLE standard)
+app.get('/health', async (req, res) => {
+  try {
+    // Vérifier la connexion MongoDB
+    const pingResult = await db.admin().ping();
+    const dbStatus = pingResult.ok === 1 ? 'ok' : 'error';
+    
+    const healthCheck = {
+      status: 'healthy',
+      service: 'nosql-injection-lab',
+      timestamp: new Date().toISOString(),
+      checks: {
+        database: {
+          status: dbStatus,
+          type: 'MongoDB',
+          uri: 'mongodb://mongodb:27017/vulnerable_app'
+        },
+        application: {
+          status: 'ok',
+          uptime: process.uptime()
+        }
+      }
+    };
+
+    res.status(200).json(healthCheck);
+  } catch (err) {
+    res.status(503).json({
+      status: 'unhealthy',
+      service: 'nosql-injection-lab',
+      timestamp: new Date().toISOString(),
+      error: err.message
+    });
+  }
+});
+
+// Reset endpoint (DIABLE standard)
+app.post('/reset', async (req, res) => {
+  try {
+    // Supprimer tous les utilisateurs
+    await db.collection('users').deleteMany({});
+    
+    // Réinsérer les données initiales
+    await db.collection('users').insertMany([
+      {
+        username: 'admin',
+        password: 'Admin123!',
+        email: 'admin@vulnerable.local',
+        role: 'admin',
+        secret: 'FLAG{nosql_injection_master}'
+      },
+      {
+        username: 'alice',
+        password: 'alice2024',
+        email: 'alice@vulnerable.local',
+        role: 'user',
+        secret: 'Ma couleur préférée est le bleu'
+      },
+      {
+        username: 'bob',
+        password: 'bobsecure',
+        email: 'bob@vulnerable.local',
+        role: 'user',
+        secret: 'Mon film préféré est Matrix'
+      },
+      {
+        username: 'charlie',
+        password: 'charlie456',
+        email: 'charlie@vulnerable.local',
+        role: 'moderator',
+        secret: 'Je collectionne les timbres'
+      }
+    ]);
+
+    res.json({
+      success: true,
+      message: 'Database reset successfully',
+      users_restored: 4
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Reset failed',
+      error: err.message
     });
   }
 });

